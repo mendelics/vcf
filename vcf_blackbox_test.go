@@ -1,0 +1,221 @@
+package vcf_test
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/mendelics/vcf"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+)
+
+type ChannelSuite struct {
+	suite.Suite
+
+	outChannel     chan *vcf.Variant
+	invalidChannel chan vcf.InvalidLine
+}
+
+func (suite *ChannelSuite) SetupTest() {
+	suite.outChannel = make(chan *vcf.Variant, 10)
+	suite.invalidChannel = make(chan vcf.InvalidLine, 10)
+}
+
+func (s *ChannelSuite) TestNoHeader() {
+	vcfLine := `1	847491	rs28407778	GTTTA	G....	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+
+	assert.Error(s.T(), err, "VCF line without header should return error")
+}
+
+func (s *ChannelSuite) TestInvalidLinesShouldReturnNothing() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+	
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc tellus ligula, faucibus sed nibh sed, fringilla viverra enim.
+					
+A	B	C	D	E	F`
+
+	ioreader := strings.NewReader(vcfLine)
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "VCF with valid header should not return an error")
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No variant should come out of the channel, it should be closed")
+
+	totalLines := 4
+	for i := 0; i < totalLines; i++ {
+		invalid := <-s.invalidChannel
+		assert.NotNil(s.T(), invalid)
+		assert.Error(s.T(), invalid.Err)
+	}
+
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, fmt.Sprintf("More than %d variants came out of the invalid channel, it should be closed", totalLines))
+}
+
+func (s *ChannelSuite) TestToChannel() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+1	847491	rs28407778	GTTTA	G....	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+
+	assert.Equal(s.T(), variant.Chrom, "1")
+	assert.Equal(s.T(), variant.Pos, 847490)
+	assert.Equal(s.T(), variant.Ref, "GTTTA")
+	assert.Equal(s.T(), variant.Alt, "G")
+	assert.Equal(s.T(), variant.ID, "rs28407778")
+	assert.Equal(s.T(), variant.Qual, 745.77)
+	assert.Equal(s.T(), variant.Filter, "PASS")
+
+	assert.NotNil(s.T(), variant.Info)
+	assert.Exactly(s.T(), len(variant.Info), 18)
+	ac, ok := variant.Info["AC"]
+	assert.True(s.T(), ok, "AC key must be found")
+	assert.Equal(s.T(), ac, "1", "ac")
+	af, ok := variant.Info["AF"]
+	assert.True(s.T(), ok, "AF key must be found")
+	assert.Equal(s.T(), af, "0.500", "af")
+	db, ok := variant.Info["DB"]
+	assert.True(s.T(), ok, "DB key must be found")
+	booldb, isbool := db.(bool)
+	assert.True(s.T(), isbool, "DB value must be a boolean")
+	assert.True(s.T(), booldb)
+
+	assert.NotNil(s.T(), variant.Samples)
+	assert.Exactly(s.T(), len(variant.Samples), 1, "Valid VCF should contain one sample")
+	sampleMap := variant.Samples[0]
+	assert.NotNil(s.T(), sampleMap, "Genotype field mapping should not return nil")
+	assert.Exactly(s.T(), len(sampleMap), 5, "Sample map should have as many keys as there are formats")
+
+	gt, ok := sampleMap["GT"]
+	assert.True(s.T(), ok, "GT key must be found")
+	assert.Equal(s.T(), gt, "0/1", "gt")
+
+	ad, ok := sampleMap["AD"]
+	assert.True(s.T(), ok, "AD key must be found")
+	assert.Equal(s.T(), ad, "16,25", "ad")
+
+	dp, ok := sampleMap["DP"]
+	assert.True(s.T(), ok, "AD key must be found")
+	assert.Equal(s.T(), dp, "41", "dp")
+
+	gq, ok := sampleMap["GQ"]
+	assert.True(s.T(), ok, "GQ key must be found")
+	assert.Equal(s.T(), gq, "99", "gq")
+
+	pl, ok := sampleMap["PL"]
+	assert.True(s.T(), ok, "PL key must be found")
+	assert.Equal(s.T(), pl, "774,0,434", "pl")
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No second variant should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
+func (s *ChannelSuite) TestLowercaseRefAlt() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+1	847491	rs28407778	gt	t	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+	assert.Equal(s.T(), variant.Ref, "GT")
+	assert.Equal(s.T(), variant.Alt, "T")
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No second variant should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
+func (s *ChannelSuite) TestMultipleAlternatives() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+1	847491	rs28407778	G	A,C	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+	assert.Equal(s.T(), variant.Alt, "A")
+	variant = <-s.outChannel
+	assert.NotNil(s.T(), variant, "Second variant should come out of channel")
+	assert.Equal(s.T(), variant.Alt, "C")
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No third variant should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
+func TestChannelSuite(t *testing.T) {
+	suite.Run(t, new(ChannelSuite))
+}
+
+type SampleSuite struct {
+	suite.Suite
+
+	outChannel     chan *vcf.Variant
+	invalidChannel chan vcf.InvalidLine
+}
+
+func (s *SampleSuite) TestNoHeader() {
+	vcfLine := `1	847491	rs28407778	GTTTA	G....	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+	sampleIDs, err := vcf.SampleIDs(ioreader)
+
+	assert.Error(s.T(), err, "VCF without header should return error")
+	assert.Nil(s.T(), sampleIDs, "No slice of ids is expected on a vcf without header")
+}
+
+func (s *SampleSuite) TestValidHeaderNoSample() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+1	847491	rs28407778	GTTTA	G....	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+	sampleIDs, err := vcf.SampleIDs(ioreader)
+
+	assert.NoError(s.T(), err, "VCF with valid header should not return error")
+	assert.Nil(s.T(), sampleIDs, "No slice of ids should be returned on a vcf with a valid header that doesn't contain any sample")
+}
+
+func (s *SampleSuite) TestOneSample() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+1	847491	rs28407778	GTTTA	G....	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+	sampleIDs, err := vcf.SampleIDs(ioreader)
+
+	assert.NoError(s.T(), err, "VCF with valid header should not return error")
+	assert.NotNil(s.T(), sampleIDs, "A slice of ids should be returned on a vcf with a valid header")
+	assert.Exactly(s.T(), len(sampleIDs), 1, "Slice of ids should have only one element")
+	assert.Equal(s.T(), sampleIDs[0], "185423")
+}
+
+func (s *SampleSuite) TestThreeSamples() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423	776182	091635
+1	847491	rs28407778	GTTTA	G....	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+	sampleIDs, err := vcf.SampleIDs(ioreader)
+
+	assert.NoError(s.T(), err, "VCF with valid header should not return error")
+	assert.NotNil(s.T(), sampleIDs, "A slice of ids should be returned on a vcf with a valid header")
+	assert.Exactly(s.T(), len(sampleIDs), 3, "Slice of ids should have three elements")
+	assert.Equal(s.T(), sampleIDs[0], "185423")
+	assert.Equal(s.T(), sampleIDs[1], "776182")
+	assert.Equal(s.T(), sampleIDs[2], "091635")
+}
+
+func TestSampleSuite(t *testing.T) {
+	suite.Run(t, new(SampleSuite))
+}
