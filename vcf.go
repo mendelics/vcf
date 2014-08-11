@@ -18,7 +18,7 @@ type Variant struct {
 
 	// optional
 	ID     string
-	Qual   float64
+	Qual   *float64
 	Filter string
 	Info   map[string]interface{}
 
@@ -107,9 +107,12 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 	baseVariant.ID = vcfLine.ID
 	fqual, err := strconv.ParseFloat(vcfLine.Qual, 64)
 	if err == nil {
-		baseVariant.Qual = fqual
+		baseVariant.Qual = &fqual
+	} else if vcfLine.Qual == "." {
+		baseVariant.Qual = nil
 	} else {
-		log.Println("unable to parse quality as float")
+		baseVariant.Qual = nil
+		log.Println("unable to parse quality as float, setting as nil")
 	}
 	baseVariant.Filter = vcfLine.Filter
 	baseVariant.Samples = vcfLine.Samples
