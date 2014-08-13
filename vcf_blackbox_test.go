@@ -71,7 +71,7 @@ func (s *ChannelSuite) TestToChannel() {
 	assert.Equal(s.T(), variant.Ref, "GTTTA")
 	assert.Equal(s.T(), variant.Alt, "G")
 	assert.Equal(s.T(), variant.ID, "rs28407778")
-	assert.Equal(s.T(), variant.Qual, 745.77)
+	assert.Equal(s.T(), *variant.Qual, 745.77)
 	assert.Equal(s.T(), variant.Filter, "PASS")
 
 	assert.NotNil(s.T(), variant.Info)

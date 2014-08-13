@@ -24,6 +24,10 @@ type Variant struct {
 
 	// sample data
 	Samples []map[string]string
+
+	// parsed info fields
+	AncestralAllele *string
+	Depth           *int
 }
 
 type InvalidLine struct {
@@ -117,6 +121,7 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 	baseVariant.Filter = vcfLine.Filter
 	baseVariant.Samples = vcfLine.Samples
 	baseVariant.Info = parseInfo(vcfLine.Info)
+	splitInfo(&baseVariant)
 
 	alternatives := strings.Split(baseVariant.Alt, ",")
 
@@ -134,6 +139,7 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 				Info:    baseVariant.Info,
 				Qual:    baseVariant.Qual,
 				Filter:  baseVariant.Filter,
+				Depth:   baseVariant.Depth,
 			})
 
 		} else {
@@ -197,4 +203,15 @@ func parseInfo(info string) map[string]interface{} {
 		}
 	}
 	return infoMap
+}
+
+func splitInfo(variant *Variant) {
+	info := variant.Info
+	if dp, found := info["DP"]; found {
+		strdp := dp.(string)
+		intdp, err := strconv.Atoi(strdp)
+		if err == nil {
+			variant.Depth = &intdp
+		}
+	}
 }
