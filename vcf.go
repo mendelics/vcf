@@ -28,6 +28,7 @@ type Variant struct {
 	// parsed info fields
 	AncestralAllele *string
 	Depth           *int
+	AlleleFrequency *float64
 }
 
 type InvalidLine struct {
@@ -121,26 +122,36 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 	baseVariant.Filter = vcfLine.Filter
 	baseVariant.Samples = vcfLine.Samples
 	baseVariant.Info = parseInfo(vcfLine.Info)
-	splitInfo(&baseVariant)
 
 	alternatives := strings.Split(baseVariant.Alt, ",")
 
-	for _, alternative := range alternatives {
+	info := multipleAltInfo(baseVariant.Info)
+
+	for i, alternative := range alternatives {
 
 		if baseVariant.Chrom != "" && baseVariant.Pos >= 0 && baseVariant.Ref != "" && alternative != "" {
 
-			result = append(result, &Variant{
+			var altinfo map[string]interface{}
+			if i >= len(info) {
+				altinfo = info[0]
+			} else {
+				altinfo = info[i]
+			}
+
+			variant := &Variant{
 				Chrom:   baseVariant.Chrom,
 				Pos:     baseVariant.Pos,
 				Ref:     baseVariant.Ref,
 				Alt:     alternative,
 				ID:      baseVariant.ID,
 				Samples: baseVariant.Samples,
-				Info:    baseVariant.Info,
+				Info:    altinfo,
 				Qual:    baseVariant.Qual,
 				Filter:  baseVariant.Filter,
-				Depth:   baseVariant.Depth,
-			})
+			}
+			splitInfo(variant)
+
+			result = append(result, variant)
 
 		} else {
 			return nil, errors.New("error parsing variant: '" + line + "'")
@@ -214,4 +225,39 @@ func splitInfo(variant *Variant) {
 			variant.Depth = &intdp
 		}
 	}
+	if af, found := info["AF"]; found {
+		straf := af.(string)
+		floataf, err := strconv.ParseFloat(straf, 64)
+		if err == nil {
+			variant.AlleleFrequency = &floataf
+		}
+	}
+}
+
+func multipleAltInfo(info map[string]interface{}) []map[string]interface{} {
+	maps := make([]map[string]interface{}, 0, 2)
+	separator := ","
+
+	for key, v := range info {
+		if value, ok := v.(string); ok {
+			alternatives := strings.Split(value, separator)
+			for position, alt := range alternatives {
+				maps = insertMapSlice(maps, position, key, alt)
+			}
+		} else {
+			maps = insertMapSlice(maps, 0, key, v)
+		}
+	}
+
+	return maps
+}
+
+func insertMapSlice(maps []map[string]interface{}, position int, key string, alt interface{}) []map[string]interface{} {
+	if len(maps) <= position {
+		for i := len(maps); i <= position; i++ {
+			maps = append(maps, make(map[string]interface{}))
+		}
+	}
+	maps[position][key] = alt
+	return maps
 }

@@ -132,7 +132,7 @@ func (s *ParseVcfLineSuite) TestValidLineWithSampleGenotypeFields() {
 }
 
 func (s *ParseVcfLineSuite) TestInfoFields() {
-	result, err := parseVcfLine("1\t847491\trs28407778\tG\tA,C\t745.77\tPASS\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
+	result, err := parseVcfLine("1\t847491\trs28407778\tG\tA,C\t745.77\tPASS\tAC=1;AF=0.500,0.335;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
 
 	assert.NoError(s.T(), err, "Valid VCF line should not return error")
 	assert.NotNil(s.T(), result, "Valid VCF line should not return nil")
@@ -150,6 +150,10 @@ func (s *ParseVcfLineSuite) TestInfoFields() {
 	assert.True(s.T(), ok, "AF key must be found")
 	assert.Equal(s.T(), af, "0.500", "af")
 
+	af, ok = result[1].Info["AF"]
+	assert.True(s.T(), ok, "AF key must be found")
+	assert.Equal(s.T(), af, "0.335", "af")
+
 	db, ok := info["DB"]
 	assert.True(s.T(), ok, "DB key must be found")
 	booldb, isbool := db.(bool)
@@ -163,8 +167,15 @@ func (s *ParseVcfLineSuite) TestInfoFields() {
 	assert.Nil(s.T(), aa, "No AA field")
 
 	dp := result[0].Depth
-	assert.NotNil(s.T(), dp, "DP (depth) field must be found")
+	assert.NotNil(s.T(), dp, "Depth field must be found")
 	assert.Equal(s.T(), *dp, 41)
+
+	freq := result[0].AlleleFrequency
+	assert.NotNil(s.T(), freq, "AlleleFrequency field must be found")
+	assert.Equal(s.T(), *freq, 0.500)
+	freq = result[1].AlleleFrequency
+	assert.NotNil(s.T(), freq, "AlleleFrequency field must be found")
+	assert.Equal(s.T(), *freq, 0.335)
 }
 
 func TestParseVcfLineSuite(t *testing.T) {
