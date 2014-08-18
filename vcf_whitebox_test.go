@@ -49,7 +49,7 @@ func (s *ParseVcfLineSuite) TestValidLineShouldReturnOneElementAndNoErrors() {
 	assert.Equal(s.T(), result[0].Alt, "A", "result.Alt should be A")
 }
 
-func (s *ParseVcfLineSuite) TestValidLineWithLowecaseRefAndAltShouldReturnOneElementAndNoErrors() {
+func (s *ParseVcfLineSuite) TestValidLineWithLowercaseRefAndAltShouldReturnOneElementAndNoErrors() {
 	result, err := parseVcfLine("1\t847491\trs28407778\tgt\ta\t745.77\tPASS\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
 
 	assert.NoError(s.T(), err, "Valid VCF line should not return error")
@@ -132,7 +132,7 @@ func (s *ParseVcfLineSuite) TestValidLineWithSampleGenotypeFields() {
 }
 
 func (s *ParseVcfLineSuite) TestInfoFields() {
-	result, err := parseVcfLine("1\t847491\trs28407778\tG\tA,C\t745.77\tPASS\tAC=1;AF=0.500,0.335;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
+	result, err := parseVcfLine("1\t847491\trs28407778\tG\tA,C\t745.77\tPASS\tAC=1,2;AF=0.500,0.335;AN=2;BQ=30.00;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;NS=27;H2;H3;SOMATIC;VALIDATED;1000G;MLEAC=1;MLEAF=0.500;END=847492;MQ=60.00;MQ0=0;SB=0.127;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;CIGAR=a;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
 
 	assert.NoError(s.T(), err, "Valid VCF line should not return error")
 	assert.NotNil(s.T(), result, "Valid VCF line should not return nil")
@@ -140,7 +140,7 @@ func (s *ParseVcfLineSuite) TestInfoFields() {
 
 	info := result[0].Info
 	assert.NotNil(s.T(), info, "Valid VCF should contain info map")
-	assert.Exactly(s.T(), len(info), 18, "Info should contain 18 keys")
+	assert.Exactly(s.T(), len(info), 28, "Info should contain 20 keys")
 
 	ac, ok := info["AC"]
 	assert.True(s.T(), ok, "AC key must be found")
@@ -176,6 +176,69 @@ func (s *ParseVcfLineSuite) TestInfoFields() {
 	freq = result[1].AlleleFrequency
 	assert.NotNil(s.T(), freq, "AlleleFrequency field must be found")
 	assert.Equal(s.T(), *freq, 0.335)
+
+	count := result[0].AlleleCount
+	assert.NotNil(s.T(), count, "AlleleCount field must be found")
+	assert.Equal(s.T(), *count, 1)
+	count = result[1].AlleleCount
+	assert.NotNil(s.T(), count, "AlleleCount field must be found")
+	assert.Equal(s.T(), *count, 2)
+
+	total := result[0].TotalAlleles
+	assert.NotNil(s.T(), total, "TotalAlleles field must be found")
+	assert.Equal(s.T(), *total, 2)
+
+	end := result[0].End
+	assert.NotNil(s.T(), end, "End field must be found")
+	assert.Equal(s.T(), *end, 847492)
+
+	mapq0reads := result[0].MAPQ0Reads
+	assert.NotNil(s.T(), mapq0reads, "MAPQ0Reads field must be found")
+	assert.Equal(s.T(), *mapq0reads, 0)
+
+	numSamples := result[0].NumberOfSamples
+	assert.NotNil(s.T(), numSamples, "NumberOfSamples field must be found")
+	assert.Equal(s.T(), *numSamples, 27)
+
+	mq := result[0].MappingQuality
+	assert.NotNil(s.T(), mq, "MappingQuality field must be found")
+	assert.Equal(s.T(), *mq, 60.0)
+
+	cigar := result[0].Cigar
+	assert.NotNil(s.T(), cigar, "Cigar field must be found")
+	assert.Equal(s.T(), *cigar, "a")
+
+	dbsnp := result[0].InDBSNP
+	assert.NotNil(s.T(), dbsnp, "InDBSNP field must be found")
+	assert.True(s.T(), *dbsnp)
+
+	h2 := result[0].InHapmap2
+	assert.NotNil(s.T(), h2, "InHapmap2 field must be found")
+	assert.True(s.T(), *h2)
+
+	h3 := result[0].InHapmap3
+	assert.NotNil(s.T(), h3, "InHapmap3 field must be found")
+	assert.True(s.T(), *h3)
+
+	somatic := result[0].IsSomatic
+	assert.NotNil(s.T(), somatic, "IsSomatic field must be found")
+	assert.True(s.T(), *somatic)
+
+	validated := result[0].IsValidated
+	assert.NotNil(s.T(), validated, "IsValidated field must be found")
+	assert.True(s.T(), *validated)
+
+	thousand := result[0].In1000G
+	assert.NotNil(s.T(), thousand, "In1000G field must be found")
+	assert.True(s.T(), *thousand)
+
+	bq := result[0].BaseQuality
+	assert.NotNil(s.T(), bq, "BaseQuality field must be found")
+	assert.Equal(s.T(), *bq, 30.0)
+
+	strandBias := result[0].StrandBias
+	assert.NotNil(s.T(), strandBias, "StrandBias field must be found")
+	assert.Equal(s.T(), *strandBias, 0.127)
 }
 
 func (s *ParseVcfLineSuite) TestAncestralAllele() {
@@ -184,6 +247,32 @@ func (s *ParseVcfLineSuite) TestAncestralAllele() {
 	aa := result[0].AncestralAllele
 	assert.NotNil(s.T(), aa, "AncestralAllele field must be found")
 	assert.Equal(s.T(), *aa, "T")
+}
+
+func (s *ParseVcfLineSuite) TestAlternateFormatOptionalField() {
+	var result []*Variant
+	var err error
+
+	assert.NotPanics(s.T(), func() {
+		result, err = parseVcfLine("1\t847491\trs28407778\tG\tA\t745.77\tPASS\tSB=strong;AA\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
+	})
+
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+	assert.NotNil(s.T(), result, "Valid VCF line should not return nil")
+
+	info := result[0].Info
+	assert.NotNil(s.T(), info, "Valid VCF should contain info map")
+	assert.Exactly(s.T(), len(info), 2, "Info should contain 2 keys")
+
+	sb, ok := info["SB"]
+	assert.True(s.T(), ok, "SB key must be found")
+	assert.Equal(s.T(), sb, "strong")
+
+	aa, ok := info["AA"]
+	assert.True(s.T(), ok, "AA key must be found")
+	boolaa, isbool := aa.(bool)
+	assert.True(s.T(), isbool, "AA value must be a boolean")
+	assert.True(s.T(), boolaa)
 }
 
 func TestParseVcfLineSuite(t *testing.T) {

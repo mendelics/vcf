@@ -9,34 +9,58 @@ import (
 	"strings"
 )
 
+// Variant is a struct representing the fields specified in the VCF 4.2 spec. It does not support structural variants. When the variant is generated through the API of the vcf package, the required fields are guaranteed to be valid, otherwise the parsing for the variant fails and is reported.
+// Multiple alternatives are parsed as separated instances of the type Variant
+// All other fields are optional and will not cause parsing fails if missing or non-conformant.
 type Variant struct {
-	// required fields
+	// Required fields
 	Chrom string
 	Pos   int
 	Ref   string
 	Alt   string
 
-	// optional
-	ID     string
+	ID string
+	// Qual is a pointer so that it can be set to nil when it is a dot '.'
 	Qual   *float64
 	Filter string
-	Info   map[string]interface{}
+	// Info is a map containing all the keys present in the INFO field, with their corresponding value. For keys without corresponding values, the value is a `true` bool.
+	// No attempt at parsing is made on this field, data is raw. The only exception is for multiple alternatives data. These are reported separately for each variant
+	Info map[string]interface{}
 
-	// sample data
+	// Genotype fields for each sample
 	Samples []map[string]string
 
-	// parsed info fields
+	// Optional info fields. These are the reserved fields listed on the VCF 4.2 spec, session 1.4.1, number 8. The parsing is lenient, if the fields do not conform to the expected type listed here, they will be set to nil
+	// The fields are meant as helpers for common scenarios, since the generic usage is covered by the Info map
+	// Definitions used in the metadata section of the header are not used
 	AncestralAllele *string
 	Depth           *int
 	AlleleFrequency *float64
+	AlleleCount     *int
+	TotalAlleles    *int
+	End             *int
+	MAPQ0Reads      *int
+	NumberOfSamples *int
+	MappingQuality  *float64
+	Cigar           *string
+	InDBSNP         *bool
+	InHapmap2       *bool
+	InHapmap3       *bool
+	IsSomatic       *bool
+	IsValidated     *bool
+	In1000G         *bool
+	BaseQuality     *float64
+	StrandBias      *float64
 }
 
+// InvalidLine represents a VCF line that could not be parsed. It encapsulates the problematic line with its corresponding error.
 type InvalidLine struct {
 	Line string
 	Err  error
 }
 
-// ToChannel opens a file and puts all variants into an already initialized channel
+// ToChannel opens a file and puts all variants into an already initialized channel. Variants whose parsing fails go into a specific channel for failing variants
+// Both channels are closed when the reader is fully scanned
 func ToChannel(reader io.Reader, output chan<- *Variant, invalids chan<- InvalidLine) error {
 	scanner := bufio.NewScanner(bufio.NewReader(reader))
 	header, err := readVcfHeader(scanner)
@@ -121,11 +145,11 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 	}
 	baseVariant.Filter = vcfLine.Filter
 	baseVariant.Samples = vcfLine.Samples
-	baseVariant.Info = parseInfo(vcfLine.Info)
+	baseVariant.Info = infoToMap(vcfLine.Info)
 
 	alternatives := strings.Split(baseVariant.Alt, ",")
 
-	info := multipleAltInfo(baseVariant.Info)
+	info := splitMultipleAltInfos(baseVariant.Info)
 
 	for i, alternative := range alternatives {
 
@@ -164,13 +188,11 @@ func splitVcfFields(line string) (ret *vcfLine, err error) {
 
 	fields := strings.Split(line, "\t")
 
-	// 7 Fields are mandatory in VCF
 	if len(fields) < 8 {
 		return nil, errors.New("wrong amount of columns: " + string(len(fields)))
 	}
 	ret = &vcfLine{}
 
-	// Reading mandatory fields (without type conversions)
 	ret.Chr = fields[0]
 	ret.Pos = fields[1]
 	ret.ID = fields[2]
@@ -180,7 +202,6 @@ func splitVcfFields(line string) (ret *vcfLine, err error) {
 	ret.Filter = fields[6]
 	ret.Info = fields[7]
 
-	// Read sample when have INFO and at least one SAMPLE
 	if len(fields) > 8 {
 		samples := fields[9:len(fields)]
 		ret.Samples = make([]map[string]string, len(fields)-9)
@@ -189,6 +210,7 @@ func splitVcfFields(line string) (ret *vcfLine, err error) {
 			ret.Samples[i] = parseSample(ret.Format, sample)
 		}
 	}
+
 	return
 }
 
@@ -199,84 +221,4 @@ func parseSample(format []string, unparsedSample string) map[string]string {
 		sampleMapping[format[i]] = field
 	}
 	return sampleMapping
-}
-
-func parseInfo(info string) map[string]interface{} {
-	infoMap := make(map[string]interface{})
-	fields := strings.Split(info, ";")
-	for _, field := range fields {
-		if strings.Contains(field, "=") {
-			split := strings.Split(field, "=")
-			fieldName, fieldValue := split[0], split[1]
-			infoMap[fieldName] = fieldValue
-		} else {
-			infoMap[field] = true
-		}
-	}
-	return infoMap
-}
-
-func splitInfo(variant *Variant) {
-	info := variant.Info
-	variant.Depth = infoInt("DP", info)
-	variant.AlleleFrequency = infoFloat("AF", info)
-	variant.AncestralAllele = infoString("AA", info)
-}
-
-func infoInt(key string, info map[string]interface{}) *int {
-	if value, found := info[key]; found {
-		str := value.(string)
-		intvalue, err := strconv.Atoi(str)
-		if err == nil {
-			return &intvalue
-		}
-	}
-	return nil
-}
-
-func infoString(key string, info map[string]interface{}) *string {
-	if value, found := info[key]; found {
-		str := value.(string)
-		return &str
-	}
-	return nil
-}
-
-func infoFloat(key string, info map[string]interface{}) *float64 {
-	if value, found := info[key]; found {
-		str := value.(string)
-		floatvalue, err := strconv.ParseFloat(str, 64)
-		if err == nil {
-			return &floatvalue
-		}
-	}
-	return nil
-}
-
-func multipleAltInfo(info map[string]interface{}) []map[string]interface{} {
-	maps := make([]map[string]interface{}, 0, 2)
-	separator := ","
-
-	for key, v := range info {
-		if value, ok := v.(string); ok {
-			alternatives := strings.Split(value, separator)
-			for position, alt := range alternatives {
-				maps = insertMapSlice(maps, position, key, alt)
-			}
-		} else {
-			maps = insertMapSlice(maps, 0, key, v)
-		}
-	}
-
-	return maps
-}
-
-func insertMapSlice(maps []map[string]interface{}, position int, key string, alt interface{}) []map[string]interface{} {
-	if len(maps) <= position {
-		for i := len(maps); i <= position; i++ {
-			maps = append(maps, make(map[string]interface{}))
-		}
-	}
-	maps[position][key] = alt
-	return maps
 }

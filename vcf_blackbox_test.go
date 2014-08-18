@@ -166,9 +166,6 @@ func TestChannelSuite(t *testing.T) {
 
 type SampleSuite struct {
 	suite.Suite
-
-	outChannel     chan *vcf.Variant
-	invalidChannel chan vcf.InvalidLine
 }
 
 func (s *SampleSuite) TestNoHeader() {
@@ -218,4 +215,64 @@ func (s *SampleSuite) TestThreeSamples() {
 
 func TestSampleSuite(t *testing.T) {
 	suite.Run(t, new(SampleSuite))
+}
+
+type InfoSuite struct {
+	suite.Suite
+
+	outChannel     chan *vcf.Variant
+	invalidChannel chan vcf.InvalidLine
+}
+
+func (suite *InfoSuite) SetupTest() {
+	suite.outChannel = make(chan *vcf.Variant, 10)
+	suite.invalidChannel = make(chan vcf.InvalidLine, 10)
+}
+
+func (s *InfoSuite) TestInfo() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+1	847491	rs28407778	GTTTA	G....	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+
+	assert.NotNil(s.T(), variant.AlleleCount)
+	assert.Equal(s.T(), *variant.AlleleCount, 1)
+	assert.NotNil(s.T(), variant.AlleleFrequency)
+	assert.Equal(s.T(), *variant.AlleleFrequency, 0.5)
+	assert.NotNil(s.T(), variant.TotalAlleles)
+	assert.Equal(s.T(), *variant.TotalAlleles, 2)
+	assert.NotNil(s.T(), variant.InDBSNP)
+	assert.True(s.T(), *variant.InDBSNP)
+	assert.NotNil(s.T(), variant.Depth)
+	assert.Equal(s.T(), *variant.Depth, 41)
+	assert.NotNil(s.T(), variant.MappingQuality)
+	assert.Equal(s.T(), *variant.MappingQuality, 60.0)
+	assert.NotNil(s.T(), variant.MAPQ0Reads)
+	assert.Equal(s.T(), *variant.MAPQ0Reads, 0)
+
+	assert.Nil(s.T(), variant.AncestralAllele)
+	assert.Nil(s.T(), variant.BaseQuality)
+	assert.Nil(s.T(), variant.Cigar)
+	assert.Nil(s.T(), variant.End)
+	assert.Nil(s.T(), variant.InHapmap2)
+	assert.Nil(s.T(), variant.InHapmap3)
+	assert.Nil(s.T(), variant.NumberOfSamples)
+	assert.Nil(s.T(), variant.StrandBias)
+	assert.Nil(s.T(), variant.IsSomatic)
+	assert.Nil(s.T(), variant.IsValidated)
+	assert.Nil(s.T(), variant.In1000G)
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No second variant should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
+func TestInfoSuite(t *testing.T) {
+	suite.Run(t, new(InfoSuite))
 }
