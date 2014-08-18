@@ -178,6 +178,14 @@ func (s *ParseVcfLineSuite) TestInfoFields() {
 	assert.Equal(s.T(), *freq, 0.335)
 }
 
+func (s *ParseVcfLineSuite) TestAncestralAllele() {
+	result, _ := parseVcfLine("1\t847491\trs28407778\tG\tA,C\t745.77\tPASS\tAC=1;AF=0.500,0.335;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;AA=T;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
+
+	aa := result[0].AncestralAllele
+	assert.NotNil(s.T(), aa, "AncestralAllele field must be found")
+	assert.Equal(s.T(), *aa, "T")
+}
+
 func TestParseVcfLineSuite(t *testing.T) {
 	suite.Run(t, new(ParseVcfLineSuite))
 }

@@ -218,20 +218,39 @@ func parseInfo(info string) map[string]interface{} {
 
 func splitInfo(variant *Variant) {
 	info := variant.Info
-	if dp, found := info["DP"]; found {
-		strdp := dp.(string)
-		intdp, err := strconv.Atoi(strdp)
+	variant.Depth = infoInt("DP", info)
+	variant.AlleleFrequency = infoFloat("AF", info)
+	variant.AncestralAllele = infoString("AA", info)
+}
+
+func infoInt(key string, info map[string]interface{}) *int {
+	if value, found := info[key]; found {
+		str := value.(string)
+		intvalue, err := strconv.Atoi(str)
 		if err == nil {
-			variant.Depth = &intdp
+			return &intvalue
 		}
 	}
-	if af, found := info["AF"]; found {
-		straf := af.(string)
-		floataf, err := strconv.ParseFloat(straf, 64)
+	return nil
+}
+
+func infoString(key string, info map[string]interface{}) *string {
+	if value, found := info[key]; found {
+		str := value.(string)
+		return &str
+	}
+	return nil
+}
+
+func infoFloat(key string, info map[string]interface{}) *float64 {
+	if value, found := info[key]; found {
+		str := value.(string)
+		floatvalue, err := strconv.ParseFloat(str, 64)
 		if err == nil {
-			variant.AlleleFrequency = &floataf
+			return &floatvalue
 		}
 	}
+	return nil
 }
 
 func multipleAltInfo(info map[string]interface{}) []map[string]interface{} {
