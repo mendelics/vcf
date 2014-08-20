@@ -84,15 +84,21 @@ func infoBool(key string, info map[string]interface{}) *bool {
 	return nil
 }
 
-func splitMultipleAltInfos(info map[string]interface{}) []map[string]interface{} {
+func splitMultipleAltInfos(info map[string]interface{}, numberOfAlternatives int) []map[string]interface{} {
 	maps := make([]map[string]interface{}, 0, 2)
 	separator := ","
 
 	for key, v := range info {
 		if value, ok := v.(string); ok {
-			alternatives := strings.Split(value, separator)
-			for position, alt := range alternatives {
-				maps = insertMapSlice(maps, position, key, alt)
+			if strings.Contains(value, separator) {
+				alternatives := strings.Split(value, separator)
+				for position, alt := range alternatives {
+					maps = insertMapSlice(maps, position, key, alt)
+				}
+			} else {
+				for i:=0; i<numberOfAlternatives; i++ {
+					maps = insertMapSlice(maps, i, key, value)
+				}
 			}
 		} else {
 			maps = insertMapSlice(maps, 0, key, v)

@@ -167,7 +167,11 @@ func (s *ParseVcfLineSuite) TestInfoFields() {
 	assert.Nil(s.T(), aa, "No AA field")
 
 	dp := result[0].Depth
-	assert.NotNil(s.T(), dp, "Depth field must be found")
+	assert.NotNil(s.T(), dp, "Depth field of first element must be found")
+	assert.Equal(s.T(), *dp, 41)
+
+	dp = result[1].Depth
+	assert.NotNil(s.T(), dp, "Depth field of second element must be found")
 	assert.Equal(s.T(), *dp, 41)
 
 	freq := result[0].AlleleFrequency

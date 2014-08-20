@@ -149,7 +149,7 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 
 	alternatives := strings.Split(baseVariant.Alt, ",")
 
-	info := splitMultipleAltInfos(baseVariant.Info)
+	info := splitMultipleAltInfos(baseVariant.Info, len(alternatives))
 
 	for i, alternative := range alternatives {
 
