@@ -63,25 +63,28 @@ type InvalidLine struct {
 // Both channels are closed when the reader is fully scanned
 func ToChannel(reader io.Reader, output chan<- *Variant, invalids chan<- InvalidLine) error {
 	scanner := bufio.NewScanner(bufio.NewReader(reader))
-	header, err := readVcfHeader(scanner)
+	header, err := vcfHeader(scanner)
 	if err != nil {
 		return err
-	} else {
-		for scanner.Scan() {
-			if !isBlankOrHeaderLine(scanner.Text()) {
-				variants, err := parseVcfLine(scanner.Text(), header)
-				if variants != nil && err == nil {
-					for _, variant := range variants {
-						output <- variant
-					}
-				} else if err != nil {
-					invalids <- InvalidLine{scanner.Text(), err}
-				}
+	}
+
+	for scanner.Scan() {
+		if isBlankOrHeaderLine(scanner.Text()) {
+			continue
+		}
+		variants, err := parseVcfLine(scanner.Text(), header)
+		if variants != nil && err == nil {
+			for _, variant := range variants {
+				output <- variant
 			}
+		} else if err != nil {
+			invalids <- InvalidLine{scanner.Text(), err}
 		}
 	}
+
 	close(output)
 	close(invalids)
+
 	return nil
 }
 
@@ -89,7 +92,7 @@ func ToChannel(reader io.Reader, output chan<- *Variant, invalids chan<- Invalid
 // If there are no samples on the header, a nil slice is returned
 func SampleIDs(reader io.Reader) ([]string, error) {
 	scanner := bufio.NewScanner(bufio.NewReader(reader))
-	header, err := readVcfHeader(scanner)
+	header, err := vcfHeader(scanner)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,7 @@ func SampleIDs(reader io.Reader) ([]string, error) {
 	return nil, nil
 }
 
-func readVcfHeader(scanner *bufio.Scanner) ([]string, error) {
+func vcfHeader(scanner *bufio.Scanner) ([]string, error) {
 	for scanner.Scan() {
 		if strings.HasPrefix(scanner.Text(), "#") && !strings.HasPrefix(scanner.Text(), "##") {
 			return strings.Split(scanner.Text()[1:], "\t"), nil
@@ -119,9 +122,7 @@ type vcfLine struct {
 }
 
 func parseVcfLine(line string, header []string) ([]*Variant, error) {
-	result := make([]*Variant, 0, 64)
 	vcfLine, err := splitVcfFields(line)
-
 	if err != nil {
 		return nil, errors.New("unable to parse apparently misformatted VCF line: " + line)
 	}
@@ -134,9 +135,9 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 	baseVariant.Alt = strings.ToUpper(strings.Replace(vcfLine.Alt, ".", "", -1))
 
 	baseVariant.ID = vcfLine.ID
-	fqual, err := strconv.ParseFloat(vcfLine.Qual, 64)
+	floatQuality, err := strconv.ParseFloat(vcfLine.Qual, 64)
 	if err == nil {
-		baseVariant.Qual = &fqual
+		baseVariant.Qual = &floatQuality
 	} else if vcfLine.Qual == "." {
 		baseVariant.Qual = nil
 	} else {
@@ -151,6 +152,7 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 
 	info := splitMultipleAltInfos(baseVariant.Info, len(alternatives))
 
+	result := make([]*Variant, 0, 64)
 	for i, alternative := range alternatives {
 
 		if baseVariant.Chrom != "" && baseVariant.Pos >= 0 && baseVariant.Ref != "" && alternative != "" {
@@ -173,7 +175,7 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 				Qual:    baseVariant.Qual,
 				Filter:  baseVariant.Filter,
 			}
-			splitInfo(variant)
+			buildInfoSubFields(variant)
 
 			result = append(result, variant)
 

@@ -20,29 +20,29 @@ func infoToMap(info string) map[string]interface{} {
 	return infoMap
 }
 
-func splitInfo(variant *Variant) {
+func buildInfoSubFields(variant *Variant) {
 	info := variant.Info
-	variant.Depth = infoInt("DP", info)
-	variant.AlleleFrequency = infoFloat("AF", info)
-	variant.AncestralAllele = infoString("AA", info)
-	variant.AlleleCount = infoInt("AC", info)
-	variant.TotalAlleles = infoInt("AN", info)
-	variant.End = infoInt("END", info)
-	variant.MAPQ0Reads = infoInt("MQ0", info)
-	variant.NumberOfSamples = infoInt("NS", info)
-	variant.MappingQuality = infoFloat("MQ", info)
-	variant.Cigar = infoString("CIGAR", info)
-	variant.InDBSNP = infoBool("DB", info)
-	variant.InHapmap2 = infoBool("H2", info)
-	variant.InHapmap3 = infoBool("H3", info)
-	variant.IsSomatic = infoBool("SOMATIC", info)
-	variant.IsValidated = infoBool("VALIDATED", info)
-	variant.In1000G = infoBool("1000G", info)
-	variant.BaseQuality = infoFloat("BQ", info)
-	variant.StrandBias = infoFloat("SB", info)
+	variant.Depth = parseIntFromInfoMap("DP", info)
+	variant.AlleleFrequency = parseFloatFromInfoMap("AF", info)
+	variant.AncestralAllele = parseStringFromInfoMap("AA", info)
+	variant.AlleleCount = parseIntFromInfoMap("AC", info)
+	variant.TotalAlleles = parseIntFromInfoMap("AN", info)
+	variant.End = parseIntFromInfoMap("END", info)
+	variant.MAPQ0Reads = parseIntFromInfoMap("MQ0", info)
+	variant.NumberOfSamples = parseIntFromInfoMap("NS", info)
+	variant.MappingQuality = parseFloatFromInfoMap("MQ", info)
+	variant.Cigar = parseStringFromInfoMap("CIGAR", info)
+	variant.InDBSNP = parseBoolFromInfoMap("DB", info)
+	variant.InHapmap2 = parseBoolFromInfoMap("H2", info)
+	variant.InHapmap3 = parseBoolFromInfoMap("H3", info)
+	variant.IsSomatic = parseBoolFromInfoMap("SOMATIC", info)
+	variant.IsValidated = parseBoolFromInfoMap("VALIDATED", info)
+	variant.In1000G = parseBoolFromInfoMap("1000G", info)
+	variant.BaseQuality = parseFloatFromInfoMap("BQ", info)
+	variant.StrandBias = parseFloatFromInfoMap("SB", info)
 }
 
-func infoInt(key string, info map[string]interface{}) *int {
+func parseIntFromInfoMap(key string, info map[string]interface{}) *int {
 	if value, found := info[key]; found {
 		if str, ok := value.(string); ok {
 			intvalue, err := strconv.Atoi(str)
@@ -54,7 +54,7 @@ func infoInt(key string, info map[string]interface{}) *int {
 	return nil
 }
 
-func infoString(key string, info map[string]interface{}) *string {
+func parseStringFromInfoMap(key string, info map[string]interface{}) *string {
 	if value, found := info[key]; found {
 		if str, ok := value.(string); ok {
 			return &str
@@ -63,7 +63,7 @@ func infoString(key string, info map[string]interface{}) *string {
 	return nil
 }
 
-func infoFloat(key string, info map[string]interface{}) *float64 {
+func parseFloatFromInfoMap(key string, info map[string]interface{}) *float64 {
 	if value, found := info[key]; found {
 		if str, ok := value.(string); ok {
 			floatvalue, err := strconv.ParseFloat(str, 64)
@@ -75,7 +75,7 @@ func infoFloat(key string, info map[string]interface{}) *float64 {
 	return nil
 }
 
-func infoBool(key string, info map[string]interface{}) *bool {
+func parseBoolFromInfoMap(key string, info map[string]interface{}) *bool {
 	if value, found := info[key]; found {
 		if b, ok := value.(bool); ok {
 			return &b
@@ -96,7 +96,7 @@ func splitMultipleAltInfos(info map[string]interface{}, numberOfAlternatives int
 					maps = insertMapSlice(maps, position, key, alt)
 				}
 			} else {
-				for i:=0; i<numberOfAlternatives; i++ {
+				for i := 0; i < numberOfAlternatives; i++ {
 					maps = insertMapSlice(maps, i, key, value)
 				}
 			}
