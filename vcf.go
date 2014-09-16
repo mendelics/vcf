@@ -3,6 +3,7 @@ package vcf
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"strconv"
@@ -51,6 +52,12 @@ type Variant struct {
 	In1000G         *bool
 	BaseQuality     *float64
 	StrandBias      *float64
+}
+
+// String provides a representation of the variant key: the fields Chrom, Pos, Ref and Alt
+// compatible with fmt.Stringer
+func (v *Variant) String() string {
+	return fmt.Sprintf("Chromosome: %s Position: %d Reference: %s Alternative: %s", v.Chrom, v.Pos, v.Ref, v.Alt)
 }
 
 // InvalidLine represents a VCF line that could not be parsed. It encapsulates the problematic line with its corresponding error.
