@@ -6,8 +6,8 @@ import (
 	"os"
 )
 
-// Channels should be initialized and passed to the ToChannel function. Notice closing the channels should
-// not be done by the client. This will happen inside ToChannel, when the input is exhausted.
+// Channels should be initialized and passed to the ToChannel function. The client should not close the channels
+// This will happen inside ToChannel, when the input is exhausted.
 func Example() {
 	validVariants := make(chan *Variant, 100)      // buffered channel for correctly parsed variants
 	invalidVariants := make(chan InvalidLine, 100) // buffered channel for variants that fail to parse
