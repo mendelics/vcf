@@ -66,8 +66,10 @@ type InvalidLine struct {
 	Err  error
 }
 
-// ToChannel opens a file and puts all variants into an already initialized channel. Variants whose parsing fails go into a specific channel for failing variants
-// Both channels are closed when the reader is fully scanned
+// ToChannel reads from an io.Reader and puts all variants into an already initialized channel.
+// Variants whose parsing fails go into a specific channel for failing variants.
+// If any of the two channels are full, ToChannel will block. The consumer must guarantee there is enough buffer space on the channels.
+// Both channels are closed when the reader is fully scanned.
 func ToChannel(reader io.Reader, output chan<- *Variant, invalids chan<- InvalidLine) error {
 	scanner := bufio.NewScanner(bufio.NewReader(reader))
 	header, err := vcfHeader(scanner)
