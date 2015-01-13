@@ -30,7 +30,7 @@ func Example() {
 	go func() {
 		// consume invalid variants channel asynchronously
 		for invalid := range invalidVariants {
-			log.Println("failed to parse line", invalid.Line, "with error", invalid.Err)
+			fmt.Println("failed to parse line", invalid.Line, "with error", invalid.Err)
 		}
 	}()
 

@@ -71,37 +71,52 @@ type InvalidLine struct {
 // If any of the two channels are full, ToChannel will block. The consumer must guarantee there is enough buffer space on the channels.
 // Both channels are closed when the reader is fully scanned.
 func ToChannel(reader io.Reader, output chan<- *Variant, invalids chan<- InvalidLine) error {
-	scanner := bufio.NewScanner(bufio.NewReader(reader))
-	header, err := vcfHeader(scanner)
+	bufferedReader := bufio.NewReaderSize(reader, 100*1024)
+	header, err := vcfHeader(bufferedReader)
 	if err != nil {
 		return err
 	}
 
-	for scanner.Scan() {
-		if isBlankOrHeaderLine(scanner.Text()) {
+	for {
+		line, readError := bufferedReader.ReadString('\n')
+		if readError != nil && readError != io.EOF {
+			// If an error that is not an EOF happens break immediately without trying to parse and propagating the error outside the loop
+			err = readError
+			break
+		}
+		if line == "" && readError == io.EOF {
+			// If there is an empty line at end of line, end the loop without propagating the error
+			break
+		}
+		if isHeaderLine(line) {
+			// If the line is a header don't try to parse
 			continue
 		}
-		variants, err := parseVcfLine(scanner.Text(), header)
+		variants, err := parseVcfLine(line, header)
 		if variants != nil && err == nil {
 			for _, variant := range variants {
 				output <- variant
 			}
 		} else if err != nil {
-			invalids <- InvalidLine{scanner.Text(), err}
+			invalids <- InvalidLine{line, err}
+		}
+		// Check again for a read error. This is only possible on EOF
+		if readError != nil {
+			break
 		}
 	}
 
 	close(output)
 	close(invalids)
 
-	return scanner.Err()
+	return err
 }
 
 // SampleIDs reads a vcf header from an io.Reader and returns a slice with all the sample IDs contained in that header
 // If there are no samples on the header, a nil slice is returned
 func SampleIDs(reader io.Reader) ([]string, error) {
-	scanner := bufio.NewScanner(bufio.NewReader(reader))
-	header, err := vcfHeader(scanner)
+	bufferedReader := bufio.NewReaderSize(reader, 100*1024)
+	header, err := vcfHeader(bufferedReader)
 	if err != nil {
 		return nil, err
 	}
@@ -111,17 +126,22 @@ func SampleIDs(reader io.Reader) ([]string, error) {
 	return nil, nil
 }
 
-func vcfHeader(scanner *bufio.Scanner) ([]string, error) {
-	for scanner.Scan() {
-		if strings.HasPrefix(scanner.Text(), "#") && !strings.HasPrefix(scanner.Text(), "##") {
-			return strings.Split(scanner.Text()[1:], "\t"), nil
+func vcfHeader(bufferedReader *bufio.Reader) ([]string, error) {
+	for {
+		line, err := bufferedReader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		if strings.HasPrefix(line, "#") && !strings.HasPrefix(line, "##") {
+			line = strings.TrimSpace(line)
+			return strings.Split(line[1:], "\t"), nil
 		}
 	}
 	return nil, errors.New("vcf header not found on file")
 }
 
-func isBlankOrHeaderLine(line string) bool {
-	return strings.HasPrefix(line, "#") || line == ""
+func isHeaderLine(line string) bool {
+	return strings.HasPrefix(line, "#")
 }
 
 type vcfLine struct {
