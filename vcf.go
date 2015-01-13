@@ -94,7 +94,7 @@ func ToChannel(reader io.Reader, output chan<- *Variant, invalids chan<- Invalid
 	close(output)
 	close(invalids)
 
-	return nil
+	return scanner.Err()
 }
 
 // SampleIDs reads a vcf header from an io.Reader and returns a slice with all the sample IDs contained in that header
