@@ -275,19 +275,50 @@ func (s *InfoSuite) TestInfo() {
 
 func (s *InfoSuite) TestMultiple() {
 	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
-5	159478089	rs80263784	GTT	G,GT	198.19	.	AC=1,1;AF=0.500,0.500;AN=2;BaseQRankSum=1.827;ClippingRankSum=1.323;DB;DP=20;FS=0.000;MLEAC=1,1;MLEAF=0.500,0.500;MQ=60.00;MQ0=0;MQRankSum=0.441;QD=5.74;ReadPosRankSum=0.063;set=variant5	GT:AD:DP:GQ:PL  1/2:2,9,9:20:99:425,145,183,175,0,166`
+5	159478089	rs80263784	GTT	G,GT	198.19	.	AC=1,2;AF=0.500,0.600;AN=2;BaseQRankSum=1.827;ClippingRankSum=1.323;DB;DP=20;FS=0.000;MLEAC=1,1;MLEAF=0.500,0.500;MQ=60.00;MQ0=0;MQRankSum=0.441;QD=5.74;ReadPosRankSum=0.063;set=variant5	GT:AD:DP:GQ:PL  1/2:2,9,9:20:99:425,145,183,175,0,166
+5	159478089	rs80263784	GTT	G,GT	198.19	.	AC=1,2;AF=0.500,0.600;AN=3,4;BaseQRankSum=1.827;ClippingRankSum=1.323;DB;DP=20;FS=0.000;MLEAC=1,1;MLEAF=0.500,0.500;MQ=60.00;MQ0=0;MQRankSum=0.441;QD=5.74;ReadPosRankSum=0.063;set=variant5	GT:AD:DP:GQ:PL  1/2:2,9,9:20:99:425,145,183,175,0,166`
 	ioreader := strings.NewReader(vcfLine)
 
 	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
 	assert.NoError(s.T(), err, "Valid VCF line should not return error")
 
+	// first variant
 	variant := <-s.outChannel
 	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+	assert.NotNil(s.T(), variant.AlleleCount)
+	assert.Equal(s.T(), *variant.AlleleCount, 1)
+	assert.NotNil(s.T(), variant.AlleleFrequency)
+	assert.Equal(s.T(), *variant.AlleleFrequency, 0.5)
+	assert.NotNil(s.T(), variant.TotalAlleles)
+	assert.Equal(s.T(), *variant.TotalAlleles, 2)
+
+	// second variant
 	variant, hasMore := <-s.outChannel
 	assert.True(s.T(), hasMore, "Second variant should be in the channel")
 	assert.NotNil(s.T(), variant, "Second variant should come out of channel")
+	assert.NotNil(s.T(), variant.AlleleCount)
+	assert.Equal(s.T(), *variant.AlleleCount, 2)
+	assert.NotNil(s.T(), variant.AlleleFrequency)
+	assert.Equal(s.T(), *variant.AlleleFrequency, 0.6)
+	assert.NotNil(s.T(), variant.TotalAlleles)
+	assert.Equal(s.T(), *variant.TotalAlleles, 2)
+
+	// third variant
+	variant, hasMore = <-s.outChannel
+	assert.True(s.T(), hasMore, "Third variant should be in the channel")
+	assert.NotNil(s.T(), variant, "Third variant should come out of channel")
+	assert.NotNil(s.T(), variant.TotalAlleles)
+	assert.Equal(s.T(), *variant.TotalAlleles, 3)
+
+	// fourth variant
+	variant, hasMore = <-s.outChannel
+	assert.True(s.T(), hasMore, "Fourth variant should be in the channel")
+	assert.NotNil(s.T(), variant, "Fourth variant should come out of channel")
+	assert.NotNil(s.T(), variant.TotalAlleles)
+	assert.Equal(s.T(), *variant.TotalAlleles, 4)
+
 	_, hasMore = <-s.outChannel
-	assert.False(s.T(), hasMore, "No third variant should come out of the channel, it should be closed")
+	assert.False(s.T(), hasMore, "No fifth variant should come out of the channel, it should be closed")
 	_, hasMore = <-s.invalidChannel
 	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
 }
