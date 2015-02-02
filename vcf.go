@@ -24,8 +24,10 @@ type Variant struct {
 	// Qual is a pointer so that it can be set to nil when it is a dot '.'
 	Qual   *float64
 	Filter string
-	// Info is a map containing all the keys present in the INFO field, with their corresponding value. For keys without corresponding values, the value is a `true` bool.
-	// No attempt at parsing is made on this field, data is raw. The only exception is for multiple alternatives data. These are reported separately for each variant
+	// Info is a map containing all the keys present in the INFO field, with their corresponding value. 
+	// For keys without corresponding values, the value is a `true` bool.
+	// No attempt at parsing is made on this field, data is raw. 
+	// The only exception is for multiple alternatives data. These are reported separately for each variant.
 	Info map[string]interface{}
 
 	// Genotype fields for each sample
@@ -34,24 +36,26 @@ type Variant struct {
 	// Optional info fields. These are the reserved fields listed on the VCF 4.2 spec, session 1.4.1, number 8. The parsing is lenient, if the fields do not conform to the expected type listed here, they will be set to nil
 	// The fields are meant as helpers for common scenarios, since the generic usage is covered by the Info map
 	// Definitions used in the metadata section of the header are not used
-	AncestralAllele *string
-	Depth           *int
-	AlleleFrequency *float64
-	AlleleCount     *int
-	TotalAlleles    *int
-	End             *int
-	MAPQ0Reads      *int
-	NumberOfSamples *int
-	MappingQuality  *float64
-	Cigar           *string
-	InDBSNP         *bool
-	InHapmap2       *bool
-	InHapmap3       *bool
-	IsSomatic       *bool
-	IsValidated     *bool
-	In1000G         *bool
-	BaseQuality     *float64
-	StrandBias      *float64
+	AncestralAllele 		*string
+	Depth           		*int
+	AlleleFrequency 	*float64
+	AlleleCount     		*int
+	TotalAlleles    		*int
+	End             		*int
+	MAPQ0Reads      	*int
+	NumberOfSamples 	*int
+	MappingQuality  	*float64
+	Cigar           		*string
+	InDBSNP         		*bool
+	InHapmap2      		*bool
+	InHapmap3      		*bool
+	IsSomatic       		*bool
+	IsValidated     		*bool
+	In1000G         		*bool
+	BaseQuality     		*float64
+	StrandBias      		*float64
+	SVType			*string // Structural Variant type, should be DEL, INS, DUP, INV, CNV, BND
+	SVLength		*int // Structural Variant length, negative for deletions, positive for duplications
 }
 
 // String provides a representation of the variant key: the fields Chrom, Pos, Ref and Alt
@@ -60,7 +64,8 @@ func (v *Variant) String() string {
 	return fmt.Sprintf("Chromosome: %s Position: %d Reference: %s Alternative: %s", v.Chrom, v.Pos, v.Ref, v.Alt)
 }
 
-// InvalidLine represents a VCF line that could not be parsed. It encapsulates the problematic line with its corresponding error.
+// InvalidLine represents a VCF line that could not be parsed. 
+// It encapsulates the problematic line with its corresponding error.
 type InvalidLine struct {
 	Line string
 	Err  error
@@ -68,7 +73,8 @@ type InvalidLine struct {
 
 // ToChannel reads from an io.Reader and puts all variants into an already initialized channel.
 // Variants whose parsing fails go into a specific channel for failing variants.
-// If any of the two channels are full, ToChannel will block. The consumer must guarantee there is enough buffer space on the channels.
+// If any of the two channels are full, ToChannel will block. 
+// The consumer must guarantee there is enough buffer space on the channels.
 // Both channels are closed when the reader is fully scanned.
 func ToChannel(reader io.Reader, output chan<- *Variant, invalids chan<- InvalidLine) error {
 	bufferedReader := bufio.NewReaderSize(reader, 100*1024)
@@ -145,9 +151,9 @@ func isHeaderLine(line string) bool {
 }
 
 type vcfLine struct {
-	Chr, Pos, ID, Ref, Alt, Qual, Filter, Info string
-	Format                                     []string
-	Samples                                    []map[string]string
+	Chr, Pos, ID, Ref, Alt, Qual, Filter, Info 	string
+	Format                                     		[]string
+	Samples                                    	[]map[string]string
 }
 
 func parseVcfLine(line string, header []string) ([]*Variant, error) {
@@ -194,15 +200,15 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 			}
 
 			variant := &Variant{
-				Chrom:   baseVariant.Chrom,
-				Pos:     baseVariant.Pos,
-				Ref:     baseVariant.Ref,
-				Alt:     alternative,
-				ID:      baseVariant.ID,
-				Samples: baseVariant.Samples,
-				Info:    altinfo,
-				Qual:    baseVariant.Qual,
-				Filter:  baseVariant.Filter,
+				Chrom:		baseVariant.Chrom,
+				Pos:		baseVariant.Pos,
+				Ref:		baseVariant.Ref,
+				Alt:		alternative,
+				ID:		baseVariant.ID,
+				Samples:	baseVariant.Samples,
+				Info:		altinfo,
+				Qual:		baseVariant.Qual,
+				Filter:		baseVariant.Filter,
 			}
 			buildInfoSubFields(variant)
 
