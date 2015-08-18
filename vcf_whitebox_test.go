@@ -313,3 +313,51 @@ func (s *ParseVcfLineSuite) TestInfoFieldsWhenCNV() {
 	// assert.True(s.T(), *c3)
 	assert.Equal(s.T(), *c3, 16536204, "result.End should be 1-based to 16536204")
 }
+
+type FixSuffixSuite struct {
+	suite.Suite
+}
+
+func (s *FixSuffixSuite) TestNoSuffix() {
+	variant := Variant{
+		Ref: "T",
+		Alt: "C",
+	}
+	result := fixRefAltSuffix(&variant)
+	assert.Equal(s.T(), variant.Ref, result.Ref, "no suffix in common should return the same ref")
+	assert.Equal(s.T(), variant.Alt, result.Alt, "no suffix in common should return the same alt")
+}
+
+func (s *FixSuffixSuite) TestSmallSuffix() {
+	variant := Variant{
+		Ref: "GC",
+		Alt: "TC",
+	}
+	result := fixRefAltSuffix(&variant)
+	assert.Equal(s.T(), "G", result.Ref, "GC -> TC should become ref G")
+	assert.Equal(s.T(), "T", result.Alt, "GC -> TC should become alt T")
+}
+
+func (s *FixSuffixSuite) TestBigSuffix() {
+	variant := Variant{
+		Ref: "CGGCCACGTCCCCCTATGGAGGG",
+		Alt: "TGGCCACGTCCCCCTATGGAGGG",
+	}
+	result := fixRefAltSuffix(&variant)
+	assert.Equal(s.T(), "C", result.Ref, "CGGCCACGTCCCCCTATGGAGGG -> TGGCCACGTCCCCCTATGGAGGG should become ref C")
+	assert.Equal(s.T(), "T", result.Alt, "CGGCCACGTCCCCCTATGGAGGG -> TGGCCACGTCCCCCTATGGAGGG should become alt T")
+}
+
+func (s *FixSuffixSuite) TestBigSuffixWithBigResult() {
+	variant := Variant{
+		Ref: "CGGCCACGTCCCCCTATGGAGGG",
+		Alt: "CGGCCACGTCCCCCTATGGAGGGGGCCACGTCCCCCTATGGAGGG",
+	}
+	result := fixRefAltSuffix(&variant)
+	assert.Equal(s.T(), "C", result.Ref, "CGGCCACGTCCCCCTATGGAGGG -> CGGCCACGTCCCCCTATGGAGGGGGCCACGTCCCCCTATGGAGGG should become ref C")
+	assert.Equal(s.T(), "CGGCCACGTCCCCCTATGGAGGG", result.Alt, "CGGCCACGTCCCCCTATGGAGGG -> CGGCCACGTCCCCCTATGGAGGGGGCCACGTCCCCCTATGGAGGG should become alt T")
+}
+
+func TestFixSuffixSuite(t *testing.T) {
+	suite.Run(t, new(FixSuffixSuite))
+}
