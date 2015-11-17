@@ -42,6 +42,11 @@ func buildInfoSubFields(variant *Variant) {
 	variant.StrandBias = parseFloatFromInfoMap("SB", info)
 	variant.Imprecise = parseBoolFromInfoMap("IMPRECISE", info)
 	variant.Novel = parseBoolFromInfoMap("NOVEL", info)
+
+	if rawSVType := parseStringFromInfoMap("SVTYPE", info); rawSVType != nil {
+		enumSVType := svTypeFromString(rawSVType)
+		variant.StructuralVariantType = &enumSVType
+	}
 }
 
 func parseIntFromInfoMap(key string, info map[string]interface{}) *int {
@@ -84,6 +89,10 @@ func parseBoolFromInfoMap(key string, info map[string]interface{}) *bool {
 		}
 	}
 	return nil
+}
+
+func svTypeFromString(s *string) SVType {
+	return Deletion
 }
 
 func splitMultipleAltInfos(info map[string]interface{}, numberOfAlternatives int) []map[string]interface{} {
