@@ -655,6 +655,35 @@ func (s *StructuralSuite) TestStructuralVariantInts() {
 	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
 }
 
+func (s *StructuralSuite) TestNegativeSVLen() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+1	847491	CNVR8241.1	G	A	745.77	PASS	SVTYPE=DEL;SVLEN=-52;CIPOS=10;CIEND=7	GT	0/1`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+
+	assert.Equal(s.T(), variant.Chrom, "1")
+	assert.Equal(s.T(), variant.Ref, "G")
+	assert.Equal(s.T(), variant.Alt, "A")
+	assert.Equal(s.T(), *variant.Qual, 745.77)
+	assert.Equal(s.T(), variant.Filter, "PASS")
+
+	assert.NotNil(s.T(), variant.StructuralVariantType)
+	assert.Equal(s.T(), *variant.StructuralVariantType, vcf.Deletion)
+
+	assert.NotNil(s.T(), variant.StructuralVariantLength)
+	assert.Equal(s.T(), *variant.StructuralVariantLength, -52)
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No second variant should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
 func (s *StructuralSuite) TestCompleteStructuralVariants() {
 	vcfLine := `#CHROM POS ID REF ALT QUAL FILTER INFO FORMAT N8N1T6
 X	1734042	CNVR8241.1	REF	<DUP>	30.2	PASS	SVTYPE=DUP;END=1752234;EXPECTED=3407;OBSERVED=4449;RATIO=1.31;BF=30.2	GT	0/1
