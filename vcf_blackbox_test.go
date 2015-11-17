@@ -540,7 +540,8 @@ func (s *StructuralSuite) TestInfoEnd() {
 
 func (s *StructuralSuite) TestSVType() {
 	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
-1	847491	CNVR8241.1	G	A	755.77	PASS	SVTYPE=DEL	GT	0/1`
+1	847491	CNVR8241.1	G	A	755.77	PASS	SVTYPE=DEL	GT	0/1
+1	847491	CNVR8241.1	G	A	755.77	PASS	SVTYPE=DUP	GT	0/1`
 	ioreader := strings.NewReader(vcfLine)
 
 	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
@@ -558,8 +559,13 @@ func (s *StructuralSuite) TestSVType() {
 	assert.NotNil(s.T(), variant.StructuralVariantType)
 	assert.Equal(s.T(), *variant.StructuralVariantType, vcf.Deletion)
 
+	variant = <-s.outChannel
+	assert.NotNil(s.T(), variant)
+	assert.NotNil(s.T(), variant.StructuralVariantType)
+	assert.Equal(s.T(), *variant.StructuralVariantType, vcf.Duplication)
+
 	_, hasMore := <-s.outChannel
-	assert.False(s.T(), hasMore, "No second variant should come out of the channel, it should be closed")
+	assert.False(s.T(), hasMore, "No more variants should come out of the channel, it should be closed")
 	_, hasMore = <-s.invalidChannel
 	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
 }

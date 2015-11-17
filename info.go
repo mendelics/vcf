@@ -91,8 +91,13 @@ func parseBoolFromInfoMap(key string, info map[string]interface{}) *bool {
 	return nil
 }
 
+var svTypeMap = map[string]SVType{
+	"DEL": Deletion,
+	"DUP": Duplication,
+}
+
 func svTypeFromString(s *string) SVType {
-	return Deletion
+	return svTypeMap[*s]
 }
 
 func splitMultipleAltInfos(info map[string]interface{}, numberOfAlternatives int) []map[string]interface{} {
