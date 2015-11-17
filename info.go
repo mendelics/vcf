@@ -40,8 +40,16 @@ func buildInfoSubFields(variant *Variant) {
 	variant.In1000G = parseBoolFromInfoMap("1000G", info)
 	variant.BaseQuality = parseFloatFromInfoMap("BQ", info)
 	variant.StrandBias = parseFloatFromInfoMap("SB", info)
-	variant.SVType = parseStringFromInfoMap("SVTYPE", info)
-	variant.SVLength = parseIntFromInfoMap("SVLEN", info)
+	variant.Imprecise = parseBoolFromInfoMap("IMPRECISE", info)
+	variant.Novel = parseBoolFromInfoMap("NOVEL", info)
+
+	if rawSVType := parseStringFromInfoMap("SVTYPE", info); rawSVType != nil {
+		variant.StructuralVariantType = svTypeFromString(rawSVType)
+	}
+
+	variant.StructuralVariantLength = parseIntFromInfoMap("SVLEN", info)
+	variant.ConfidenceIntervalAroundPosition = parseIntFromInfoMap("CIPOS", info)
+	variant.ConfidenceIntervalAroundEnd = parseIntFromInfoMap("CIEND", info)
 }
 
 func parseIntFromInfoMap(key string, info map[string]interface{}) *int {
@@ -82,6 +90,25 @@ func parseBoolFromInfoMap(key string, info map[string]interface{}) *bool {
 		if b, ok := value.(bool); ok {
 			return &b
 		}
+	}
+	return nil
+}
+
+var svTypeMap = map[string]SVType{
+	"DEL":        Deletion,
+	"DUP":        Duplication,
+	"INS":        Insertion,
+	"INV":        Inversion,
+	"CNV":        CopyNumberVariation,
+	"DUP:TANDEM": TandemDuplication,
+	"DEL:ME":     DeletionMobileElement,
+	"INS:ME":     InsertionMobileElement,
+	"BND":        Breakend,
+}
+
+func svTypeFromString(s *string) *SVType {
+	if k, exists := svTypeMap[*s]; exists {
+		return &k
 	}
 	return nil
 }
