@@ -655,6 +655,103 @@ func (s *StructuralSuite) TestStructuralVariantInts() {
 	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
 }
 
+func (s *StructuralSuite) TestCompleteStructuralVariants() {
+	vcfLine := `#CHROM POS ID REF ALT QUAL FILTER INFO FORMAT N8N1T6
+X	1734042	CNVR8241.1	REF	<DUP>	30.2	PASS	SVTYPE=DUP;END=1752234;EXPECTED=3407;OBSERVED=4449;RATIO=1.31;BF=30.2	GT	0/1
+X	6451689	.	REF	<DEL>	35.2	PASS	SVTYPE=DEL;END=6452594;EXPECTED=367;OBSERVED=111;RATIO=0.302;BF=35.2	GT	1/1
+X	101576281	.	REF	<DEL>	28.3	LOWBFSCORE	SVTYPE=DEL;END=101581456;EXPECTED=134;OBSERVED=4;RATIO=0.0299;BF=28.3	GT	1/1`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant)
+
+	assert.Equal(s.T(), variant.Chrom, "X")
+	assert.Equal(s.T(), variant.Pos, 1734041)
+	assert.Equal(s.T(), *variant.Qual, 30.2)
+	assert.Equal(s.T(), variant.Filter, "PASS")
+
+	assert.NotNil(s.T(), variant.StructuralVariantType)
+	assert.Equal(s.T(), *variant.StructuralVariantType, vcf.Duplication)
+	assert.NotNil(s.T(), variant.End)
+	assert.Equal(s.T(), *variant.End, 1752234)
+	assert.NotNil(s.T(), variant.Info)
+	expected, ok := variant.Info["EXPECTED"]
+	assert.True(s.T(), ok, "EXPECTED key must be found")
+	assert.Equal(s.T(), expected, "3407")
+	assert.NotNil(s.T(), variant.Info)
+	observed, ok := variant.Info["OBSERVED"]
+	assert.True(s.T(), ok, "OBSERVED key must be found")
+	assert.Equal(s.T(), observed, "4449")
+	ratio, ok := variant.Info["RATIO"]
+	assert.True(s.T(), ok, "RATIO key must be found")
+	assert.Equal(s.T(), ratio, "1.31")
+	bf, ok := variant.Info["BF"]
+	assert.True(s.T(), ok, "BF key must be found")
+	assert.Equal(s.T(), bf, "30.2")
+
+	variant = <-s.outChannel
+	assert.NotNil(s.T(), variant)
+
+	assert.Equal(s.T(), variant.Chrom, "X")
+	assert.Equal(s.T(), variant.Pos, 6451688)
+	assert.Equal(s.T(), *variant.Qual, 35.2)
+	assert.Equal(s.T(), variant.Filter, "PASS")
+
+	assert.NotNil(s.T(), variant.StructuralVariantType)
+	assert.Equal(s.T(), *variant.StructuralVariantType, vcf.Deletion)
+	assert.NotNil(s.T(), variant.End)
+	assert.Equal(s.T(), *variant.End, 6452594)
+	assert.NotNil(s.T(), variant.Info)
+	expected, ok = variant.Info["EXPECTED"]
+	assert.True(s.T(), ok, "EXPECTED key must be found")
+	assert.Equal(s.T(), expected, "367")
+	assert.NotNil(s.T(), variant.Info)
+	observed, ok = variant.Info["OBSERVED"]
+	assert.True(s.T(), ok, "OBSERVED key must be found")
+	assert.Equal(s.T(), observed, "111")
+	ratio, ok = variant.Info["RATIO"]
+	assert.True(s.T(), ok, "RATIO key must be found")
+	assert.Equal(s.T(), ratio, "0.302")
+	bf, ok = variant.Info["BF"]
+	assert.True(s.T(), ok, "BF key must be found")
+	assert.Equal(s.T(), bf, "35.2")
+
+	variant = <-s.outChannel
+	assert.NotNil(s.T(), variant)
+
+	assert.Equal(s.T(), variant.Chrom, "X")
+	assert.Equal(s.T(), variant.Pos, 101576280)
+	assert.Equal(s.T(), *variant.Qual, 28.3)
+	assert.Equal(s.T(), variant.Filter, "LOWBFSCORE")
+
+	assert.NotNil(s.T(), variant.StructuralVariantType)
+	assert.Equal(s.T(), *variant.StructuralVariantType, vcf.Deletion)
+	assert.NotNil(s.T(), variant.End)
+	assert.Equal(s.T(), *variant.End, 101581456)
+	assert.NotNil(s.T(), variant.Info)
+	expected, ok = variant.Info["EXPECTED"]
+	assert.True(s.T(), ok, "EXPECTED key must be found")
+	assert.Equal(s.T(), expected, "134")
+	assert.NotNil(s.T(), variant.Info)
+	observed, ok = variant.Info["OBSERVED"]
+	assert.True(s.T(), ok, "OBSERVED key must be found")
+	assert.Equal(s.T(), observed, "4")
+	ratio, ok = variant.Info["RATIO"]
+	assert.True(s.T(), ok, "RATIO key must be found")
+	assert.Equal(s.T(), ratio, "0.0299")
+	bf, ok = variant.Info["BF"]
+	assert.True(s.T(), ok, "BF key must be found")
+	assert.Equal(s.T(), bf, "28.3")
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No more variants should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
 func TestStructuralSuite(t *testing.T) {
 	suite.Run(t, new(StructuralSuite))
 }
