@@ -92,8 +92,15 @@ func parseBoolFromInfoMap(key string, info map[string]interface{}) *bool {
 }
 
 var svTypeMap = map[string]SVType{
-	"DEL": Deletion,
-	"DUP": Duplication,
+	"DEL":        Deletion,
+	"DUP":        Duplication,
+	"INS":        Insertion,
+	"INV":        Inversion,
+	"CNV":        CopyNumberVariation,
+	"DUP:TANDEM": TandemDuplication,
+	"DEL:ME":     DeletionMobileElement,
+	"INS:ME":     InsertionMobileElement,
+	"BND":        Breakend,
 }
 
 func svTypeFromString(s *string) SVType {

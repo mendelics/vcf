@@ -17,7 +17,7 @@ const (
 	Duplication
 	Insertion
 	Inversion
-	CNV
+	CopyNumberVariation
 	TandemDuplication
 	DeletionMobileElement
 	InsertionMobileElement
