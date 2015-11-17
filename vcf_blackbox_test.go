@@ -500,6 +500,44 @@ func (s *StructuralSuite) TestImpreciseNovel() {
 	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
 }
 
+func (s *StructuralSuite) TestInfoEnd() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+1	847491	CNVR8241.1	G	A	755.77	PASS	END=1752234	GT	0/1
+1	847491	rs28407778	GTTTA	G....	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+
+	assert.Equal(s.T(), variant.Chrom, "1")
+	assert.Equal(s.T(), variant.Ref, "G")
+	assert.Equal(s.T(), variant.Alt, "A")
+	assert.Equal(s.T(), *variant.Qual, 755.77)
+	assert.Equal(s.T(), variant.Filter, "PASS")
+
+	assert.NotNil(s.T(), variant.End)
+	assert.Equal(s.T(), *variant.End, 1752234)
+
+	variant = <-s.outChannel
+	assert.NotNil(s.T(), variant, "Second variant should come out of channel")
+
+	assert.Equal(s.T(), variant.Chrom, "1")
+	assert.Equal(s.T(), variant.Ref, "GTTTA")
+	assert.Equal(s.T(), variant.Alt, "G")
+	assert.Equal(s.T(), *variant.Qual, 745.77)
+	assert.Equal(s.T(), variant.Filter, "PASS")
+
+	assert.Nil(s.T(), variant.End)
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No third variant should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
 func TestStructuralSuite(t *testing.T) {
 	suite.Run(t, new(StructuralSuite))
 }
