@@ -40,6 +40,8 @@ func buildInfoSubFields(variant *Variant) {
 	variant.In1000G = parseBoolFromInfoMap("1000G", info)
 	variant.BaseQuality = parseFloatFromInfoMap("BQ", info)
 	variant.StrandBias = parseFloatFromInfoMap("SB", info)
+	variant.Imprecise = parseBoolFromInfoMap("IMPRECISE", info)
+	variant.Novel = parseBoolFromInfoMap("NOVEL", info)
 }
 
 func parseIntFromInfoMap(key string, info map[string]interface{}) *int {
