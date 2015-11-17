@@ -10,9 +10,13 @@ import (
 	"strings"
 )
 
-// Variant is a struct representing the fields specified in the VCF 4.2 spec. It does not support structural variants. When the variant is generated through the API of the vcf package, the required fields are guaranteed to be valid, otherwise the parsing for the variant fails and is reported.
-// Multiple alternatives are parsed as separated instances of the type Variant
-// All other fields are optional and will not cause parsing fails if missing or non-conformant.
+// Variant is a struct representing the fields specified in the VCF 4.2 spec.
+//
+// When the variant is generated through the API of the vcf package, the required fields are guaranteed to be valid,
+// otherwise the parsing for the variant fails and is reported.
+//
+// Multiple alternatives are parsed as separated instances of the type Variant. All other fields are optional and will
+// not cause parsing fails if missing or non-conformant.
 type Variant struct {
 	// Required fields
 	Chrom string
@@ -21,9 +25,12 @@ type Variant struct {
 	Alt   string
 
 	ID string
+
 	// Qual is a pointer so that it can be set to nil when it is a dot '.'
-	Qual   *float64
+	Qual *float64
+
 	Filter string
+
 	// Info is a map containing all the keys present in the INFO field, with their corresponding value.
 	// For keys without corresponding values, the value is a `true` bool.
 	// No attempt at parsing is made on this field, data is raw.
@@ -33,9 +40,10 @@ type Variant struct {
 	// Genotype fields for each sample
 	Samples []map[string]string
 
-	// Optional info fields. These are the reserved fields listed on the VCF 4.2 spec, session 1.4.1, number 8. The parsing is lenient, if the fields do not conform to the expected type listed here, they will be set to nil
-	// The fields are meant as helpers for common scenarios, since the generic usage is covered by the Info map
-	// Definitions used in the metadata section of the header are not used
+	// Optional info fields. These are the reserved fields listed on the VCF 4.2 spec, session 1.4.1, number 8.
+	// The parsing is lenient, if the fields do not conform to the expected type listed here, they will be set to nil.
+	// The fields are meant as helpers for common scenarios, since the generic usage is covered by the Info map.
+	// Definitions used in the metadata section of the header are not used.
 	AncestralAllele *string
 	Depth           *int
 	AlleleFrequency *float64
@@ -54,8 +62,10 @@ type Variant struct {
 	In1000G         *bool
 	BaseQuality     *float64
 	StrandBias      *float64
-	SVType          *string // Structural Variant type, should be DEL, INS, DUP, INV, CNV, BND
-	SVLength        *int    // Structural Variant length, negative for deletions, positive for duplications
+
+	// Structural variants
+	SVType   *string
+	SVLength *int
 }
 
 // String provides a representation of the variant key: the fields Chrom, Pos, Ref and Alt
@@ -86,16 +96,15 @@ func ToChannel(reader io.Reader, output chan<- *Variant, invalids chan<- Invalid
 	for {
 		line, readError := bufferedReader.ReadString('\n')
 		if readError != nil && readError != io.EOF {
-			// If an error that is not an EOF happens break immediately without trying to parse and propagating the error outside the loop
+			// If an error that is not an EOF happens break immediately
 			err = readError
 			break
 		}
 		if line == "" && readError == io.EOF {
-			// If there is an empty line at end of line, end the loop without propagating the error
+			// If there is an empty line at EOF, end the loop without propagating the error
 			break
 		}
 		if isHeaderLine(line) {
-			// If the line is a header don't try to parse
 			continue
 		}
 		variants, err := parseVcfLine(line, header)
@@ -119,7 +128,7 @@ func ToChannel(reader io.Reader, output chan<- *Variant, invalids chan<- Invalid
 	return err
 }
 
-// SampleIDs reads a vcf header from an io.Reader and returns a slice with all the sample IDs contained in that header
+// SampleIDs reads a vcf header from an io.Reader and returns a slice with all the sample IDs contained in that header.
 // If there are no samples on the header, a nil slice is returned
 func SampleIDs(reader io.Reader) ([]string, error) {
 	bufferedReader := bufio.NewReaderSize(reader, 100*1024)
