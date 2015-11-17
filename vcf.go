@@ -173,7 +173,12 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 	}
 
 	baseVariant := Variant{}
-	baseVariant.Chrom = vcfLine.Chr
+
+	if strings.Contains(vcfLine.Chr, "chr") {
+		baseVariant.Chrom = strings.Replace(vcfLine.Chr, "chr", "", -1)
+	} else {
+		baseVariant.Chrom = vcfLine.Chr
+	}
 	pos, _ := strconv.Atoi(vcfLine.Pos)
 	baseVariant.Pos = pos - 1 // converts variant to 0-based
 	baseVariant.Ref = strings.ToUpper(vcfLine.Ref)

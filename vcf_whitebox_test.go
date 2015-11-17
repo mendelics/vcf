@@ -49,6 +49,18 @@ func (s *ParseVcfLineSuite) TestValidLineShouldReturnOneElementAndNoErrors() {
 	assert.Equal(s.T(), result[0].Alt, "A", "result.Alt should be A")
 }
 
+func (s *ParseVcfLineSuite) TestValidLineWithChrShouldStripIt() {
+	result, err := parseVcfLine("chr1\t847491\trs28407778\tGT\tA\t745.77\tPASS\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
+
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+	assert.NotNil(s.T(), result, "Valid VCF line should not return nil")
+	assert.Exactly(s.T(), len(result), 1, "Valid VCF should return a list with one element")
+	assert.Equal(s.T(), result[0].Chrom, "1", "result.Chrom should be 1")
+	assert.Equal(s.T(), result[0].Pos, 847490, "result.Pos should be 0-based to 847490")
+	assert.Equal(s.T(), result[0].Ref, "GT", "result.Ref should be GT")
+	assert.Equal(s.T(), result[0].Alt, "A", "result.Alt should be A")
+}
+
 func (s *ParseVcfLineSuite) TestValidLineWithLowercaseRefAndAltShouldReturnOneElementAndNoErrors() {
 	result, err := parseVcfLine("1\t847491\trs28407778\tgt\ta\t745.77\tPASS\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
 

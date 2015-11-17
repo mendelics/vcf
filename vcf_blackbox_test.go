@@ -120,6 +120,25 @@ func (s *ChannelSuite) TestToChannel() {
 	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
 }
 
+func (s *ChannelSuite) TestChrParsedProperly() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+chr1	847491	rs28407778	GTTTA	G....	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+
+	assert.Equal(s.T(), variant.Chrom, "1")
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No second variant should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
 func (s *ChannelSuite) TestLowercaseRefAlt() {
 	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
 1	847491	rs28407778	gt	t	745.77	PASS	AC=1;AF=0.500;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant	GT:AD:DP:GQ:PL	0/1:16,25:41:99:774,0,434`
