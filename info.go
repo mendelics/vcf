@@ -44,8 +44,7 @@ func buildInfoSubFields(variant *Variant) {
 	variant.Novel = parseBoolFromInfoMap("NOVEL", info)
 
 	if rawSVType := parseStringFromInfoMap("SVTYPE", info); rawSVType != nil {
-		enumSVType := svTypeFromString(rawSVType)
-		variant.StructuralVariantType = &enumSVType
+		variant.StructuralVariantType = svTypeFromString(rawSVType)
 	}
 }
 
@@ -103,8 +102,11 @@ var svTypeMap = map[string]SVType{
 	"BND":        Breakend,
 }
 
-func svTypeFromString(s *string) SVType {
-	return svTypeMap[*s]
+func svTypeFromString(s *string) *SVType {
+	if k, exists := svTypeMap[*s]; exists {
+		return &k
+	}
+	return nil
 }
 
 func splitMultipleAltInfos(info map[string]interface{}, numberOfAlternatives int) []map[string]interface{} {

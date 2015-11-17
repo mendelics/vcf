@@ -548,7 +548,8 @@ func (s *StructuralSuite) TestSVType() {
 1	847491	CNVR8241.1	G	A	755.77	PASS	SVTYPE=DUP:TANDEM	GT	0/1
 1	847491	CNVR8241.1	G	A	755.77	PASS	SVTYPE=DEL:ME	GT	0/1
 1	847491	CNVR8241.1	G	A	755.77	PASS	SVTYPE=INS:ME	GT	0/1
-1	847491	CNVR8241.1	G	A	755.77	PASS	SVTYPE=BND	GT	0/1`
+1	847491	CNVR8241.1	G	A	755.77	PASS	SVTYPE=BND	GT	0/1
+1	847491	CNVR8241.1	G	A	755.77	PASS	SVTYPE=INVALID	GT	0/1`
 	ioreader := strings.NewReader(vcfLine)
 
 	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
@@ -605,6 +606,15 @@ func (s *StructuralSuite) TestSVType() {
 	assert.NotNil(s.T(), variant)
 	assert.NotNil(s.T(), variant.StructuralVariantType)
 	assert.Equal(s.T(), *variant.StructuralVariantType, vcf.Breakend)
+
+	variant = <-s.outChannel
+	assert.NotNil(s.T(), variant)
+	assert.Nil(s.T(), variant.StructuralVariantType)
+	assert.NotNil(s.T(), variant.Info)
+	assert.Exactly(s.T(), len(variant.Info), 1)
+	svtype, ok := variant.Info["SVTYPE"]
+	assert.True(s.T(), ok, "SVTYPE key must be found")
+	assert.Equal(s.T(), svtype, "INVALID")
 
 	_, hasMore := <-s.outChannel
 	assert.False(s.T(), hasMore, "No more variants should come out of the channel, it should be closed")
