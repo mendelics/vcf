@@ -46,6 +46,10 @@ func buildInfoSubFields(variant *Variant) {
 	if rawSVType := parseStringFromInfoMap("SVTYPE", info); rawSVType != nil {
 		variant.StructuralVariantType = svTypeFromString(rawSVType)
 	}
+
+	variant.StructuralVariantLength = parseIntFromInfoMap("SVLEN", info)
+	variant.ConfidenceIntervalAroundPosition = parseIntFromInfoMap("CIPOS", info)
+	variant.ConfidenceIntervalAroundEnd = parseIntFromInfoMap("CIEND", info)
 }
 
 func parseIntFromInfoMap(key string, info map[string]interface{}) *int {

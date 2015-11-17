@@ -622,6 +622,39 @@ func (s *StructuralSuite) TestSVType() {
 	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
 }
 
+func (s *StructuralSuite) TestStructuralVariantInts() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+1	847491	CNVR8241.1	G	A	745.77	PASS	SVTYPE=DUP;SVLEN=337;CIPOS=10;CIEND=7	GT	0/1`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+
+	assert.Equal(s.T(), variant.Chrom, "1")
+	assert.Equal(s.T(), variant.Ref, "G")
+	assert.Equal(s.T(), variant.Alt, "A")
+	assert.Equal(s.T(), *variant.Qual, 745.77)
+	assert.Equal(s.T(), variant.Filter, "PASS")
+
+	assert.NotNil(s.T(), variant.StructuralVariantType)
+	assert.Equal(s.T(), *variant.StructuralVariantType, vcf.Duplication)
+
+	assert.NotNil(s.T(), variant.StructuralVariantLength)
+	assert.Equal(s.T(), *variant.StructuralVariantLength, 337)
+	assert.NotNil(s.T(), variant.ConfidenceIntervalAroundPosition)
+	assert.Equal(s.T(), *variant.ConfidenceIntervalAroundPosition, 10)
+	assert.NotNil(s.T(), variant.ConfidenceIntervalAroundEnd)
+	assert.Equal(s.T(), *variant.ConfidenceIntervalAroundEnd, 7)
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No second variant should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
 func TestStructuralSuite(t *testing.T) {
 	suite.Run(t, new(StructuralSuite))
 }
