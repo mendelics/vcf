@@ -10,6 +10,20 @@ import (
 	"strings"
 )
 
+type SVType int
+
+const (
+	Deletion SVType = iota
+	Duplication
+	Insertion
+	Inversion
+	CNV
+	TandemDuplication
+	DeletionMobileElement
+	InsertionMobileElement
+	Breakend
+)
+
 // Variant is a struct representing the fields specified in the VCF 4.2 spec.
 //
 // When the variant is generated through the API of the vcf package, the required fields are guaranteed to be valid,
@@ -64,8 +78,12 @@ type Variant struct {
 	StrandBias      *float64
 
 	// Structural variants
-	SVType   *string
-	SVLength *int
+	Imprecise                        *bool
+	Novel                            *bool
+	StructuralVariantType            *SVType
+	StructuralVariantLength          *int
+	ConfidenceIntervalAroundPosition *int
+	ConfidenceIntervalAroundEnd      *int
 }
 
 // String provides a representation of the variant key: the fields Chrom, Pos, Ref and Alt

@@ -307,25 +307,6 @@ func (s *ParseVcfLineSuite) TestValidCNVShouldReturnOneElementAndNoErrors() {
 	assert.Equal(s.T(), result[0].Alt, "<CN0>", "result.Alt should be A")
 }
 
-func (s *ParseVcfLineSuite) TestInfoFieldsWhenCNV() {
-	result, _ := parseVcfLine("22\t16533236\tSI_BD_17525\tC\t<CN0>\t100\tPASS\tAC=125;AF=0.0249601;AN=5008;CIEND=-50,141;CIPOS=-141,50;CS=DEL_union;END=16536204;NS=2504;SVLEN=-2968;SVTYPE=DEL;DP=14570;EAS_AF=0;AMR_AF=0.0086;AFR_AF=0.09;EUR_AF=0;SAS_AF=0\tGT", defaultHeader)
-
-	c1 := result[0].SVType
-	assert.NotNil(s.T(), c1, "SVType field must be found")
-	// assert.True(s.T(), *c1)
-	assert.Equal(s.T(), *c1, "DEL", "result.SVTYPE should be DEL")
-
-	c2 := result[0].SVLength
-	assert.NotNil(s.T(), c2, "SVLength field must be found")
-	// assert.True(s.T(), *c2)
-	assert.Equal(s.T(), *c2, -2968, "result.SVLEN should be -2968")
-
-	c3 := result[0].End
-	assert.NotNil(s.T(), c3, "End field must be found")
-	// assert.True(s.T(), *c3)
-	assert.Equal(s.T(), *c3, 16536204, "result.End should be 1-based to 16536204")
-}
-
 type FixSuffixSuite struct {
 	suite.Suite
 }

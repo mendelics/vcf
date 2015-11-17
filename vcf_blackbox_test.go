@@ -422,3 +422,56 @@ func (s *FixSuffixSuite) TestBigSuffix() {
 func TestFixSuffixSuite(t *testing.T) {
 	suite.Run(t, new(FixSuffixSuite))
 }
+
+type StructuralSuite struct {
+	suite.Suite
+
+	outChannel     chan *vcf.Variant
+	invalidChannel chan vcf.InvalidLine
+}
+
+func (suite *StructuralSuite) SetupTest() {
+	suite.outChannel = make(chan *vcf.Variant, 10)
+	suite.invalidChannel = make(chan vcf.InvalidLine, 10)
+}
+
+func (s *StructuralSuite) TestNoSpecificStructuralVariantFieldsSet() {
+	vcfLine := `#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	185423
+1	847491	CNVR8241.1	G	A	745.77	PASS	AC=1	GT	0/1`
+	ioreader := strings.NewReader(vcfLine)
+
+	err := vcf.ToChannel(ioreader, s.outChannel, s.invalidChannel)
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+
+	variant := <-s.outChannel
+	assert.NotNil(s.T(), variant, "One variant should come out of channel")
+
+	assert.Equal(s.T(), variant.Chrom, "1")
+	assert.Equal(s.T(), variant.Ref, "G")
+	assert.Equal(s.T(), variant.Alt, "A")
+	assert.Equal(s.T(), *variant.Qual, 745.77)
+	assert.Equal(s.T(), variant.Filter, "PASS")
+
+	assert.NotNil(s.T(), variant.Info)
+	assert.Exactly(s.T(), len(variant.Info), 1)
+	ac, ok := variant.Info["AC"]
+	assert.True(s.T(), ok, "AC key must be found")
+	assert.Equal(s.T(), ac, "1", "ac")
+
+	assert.Nil(s.T(), variant.Imprecise)
+	assert.Nil(s.T(), variant.Novel)
+	assert.Nil(s.T(), variant.End)
+	assert.Nil(s.T(), variant.StructuralVariantType)
+	assert.Nil(s.T(), variant.StructuralVariantLength)
+	assert.Nil(s.T(), variant.ConfidenceIntervalAroundPosition)
+	assert.Nil(s.T(), variant.ConfidenceIntervalAroundEnd)
+
+	_, hasMore := <-s.outChannel
+	assert.False(s.T(), hasMore, "No second variant should come out of the channel, it should be closed")
+	_, hasMore = <-s.invalidChannel
+	assert.False(s.T(), hasMore, "No variant should come out of invalid channel, it should be closed")
+}
+
+func TestStructuralSuite(t *testing.T) {
+	suite.Run(t, new(StructuralSuite))
+}
