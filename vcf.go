@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+//go:generate stringer -type=SVType
 type SVType int
 
 const (
