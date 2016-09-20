@@ -257,6 +257,28 @@ func (s *ParseVcfLineSuite) TestInfoFields() {
 	assert.Equal(s.T(), *strandBias, 0.127)
 }
 
+func (s *ParseVcfLineSuite) TestInfoWithoutFormat() {
+	result, err := parseVcfLine("1\t847491\trs28407778\tG\tA,C\t745.77\tPASS\tAC=1,2;AF=0.500,0.335;AN=2;BQ=30.00;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;DP=41;FS=0.000;NS=27;H2;H3;SOMATIC;VALIDATED;1000G;MLEAC=1;MLEAF=0.500;END=847492;MQ=60.00;MQ0=0;SB=0.127;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;CIGAR=a;culprit=FS;toxic\n", defaultHeader)
+
+	assert.NoError(s.T(), err, "Valid VCF line should not return error")
+	assert.NotNil(s.T(), result, "Valid VCF line should not return nil")
+	assert.Exactly(s.T(), len(result), 2, "Valid VCF should return a list with two elements")
+
+	info := result[0].Info
+	assert.NotNil(s.T(), info, "Valid VCF should contain info map")
+	assert.Exactly(s.T(), len(info), 28, "Info should contain 28 keys")
+
+	ac, ok := info["AC"]
+	assert.True(s.T(), ok, "AC key must be found")
+	assert.Equal(s.T(), ac, "1", "ac")
+
+	toxic, ok := info["toxic"]
+	assert.True(s.T(), ok, "toxic key must be found")
+	booltoxic, isbool := toxic.(bool)
+	assert.True(s.T(), isbool, "toxic value must be a boolean")
+	assert.True(s.T(), booltoxic)
+}
+
 func (s *ParseVcfLineSuite) TestAncestralAllele() {
 	result, _ := parseVcfLine("1\t847491\trs28407778\tG\tA,C\t745.77\tPASS\tAC=1;AF=0.500,0.335;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;AA=T;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
 
