@@ -186,6 +186,7 @@ type vcfLine struct {
 }
 
 func parseVcfLine(line string, header []string) ([]*Variant, error) {
+	line = strings.TrimSpace(line)
 	vcfLine, err := splitVcfFields(line)
 	if err != nil {
 		return nil, errors.New("unable to parse apparently misformatted VCF line: " + line)
