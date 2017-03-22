@@ -313,6 +313,19 @@ func (s *ParseVcfLineSuite) TestAlternateFormatOptionalField() {
 	assert.True(s.T(), boolaa)
 }
 
+func (s *ParseVcfLineSuite) TestGenotype() {
+	result, _ := parseVcfLine("1\t847491\trs28407778\tG\tA,C\t745.77\tPASS\tAC=1;AF=0.500,0.335;AN=2;BaseQRankSum=0.842;ClippingRankSum=0.147;DB;AA=T;DP=41;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=-1.109;QD=18.19;ReadPosRankSum=0.334;VQSLOD=2.70;culprit=FS;set=variant\tGT:AD:DP:GQ:PL\t0/1:16,25:41:99:774,0,434", defaultHeader)
+
+	samples := result[0].Samples
+	assert.NotNil(s.T(), samples, "Samples must be found")
+	assert.Len(s.T(), samples, 1, "There must be one sample")
+
+	sample := samples[0]
+	gt, found := sample["GT"]
+	assert.True(s.T(), found, "GT key must be found")
+	assert.Equal(s.T(), gt, "0/1")
+}
+
 func TestParseVcfLineSuite(t *testing.T) {
 	suite.Run(t, new(ParseVcfLineSuite))
 }
