@@ -389,3 +389,22 @@ func (s *FixSuffixSuite) TestBigSuffixWithBigResult() {
 func TestFixSuffixSuite(t *testing.T) {
 	suite.Run(t, new(FixSuffixSuite))
 }
+
+type SplitVcfFieldsSuite struct {
+	suite.Suite
+}
+
+func (s *SplitVcfFieldsSuite) TestNewlineChomp() {
+	line := "X\t32632420\t.\tN\t<DEL>\t87.2\tPASS\tSVTYPE=DEL;END=32717410;EXPECTED=1071;OBSERVED=17;RATIO=0.0159;BF=87.2\tGT\t1/1\n"
+	vcfLine, err := splitVcfFields(line)
+
+	assert.NoError(s.T(), err, "split should not fail")
+	assert.NotNil(s.T(), vcfLine, "vcf line can't be nil")
+	assert.NotEmpty(s.T(), vcfLine.Samples, "samples can't be empty")
+	gt := vcfLine.Samples[0]["GT"]
+	assert.Equal(s.T(), "1/1", gt)
+}
+
+func TestSplitVcfFieldsSuite(t *testing.T) {
+	suite.Run(t, new(SplitVcfFieldsSuite))
+}

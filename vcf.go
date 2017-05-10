@@ -257,6 +257,7 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 }
 
 func splitVcfFields(line string) (ret *vcfLine, err error) {
+	line = strings.TrimSpace(line)
 
 	fields := strings.Split(line, "\t")
 
