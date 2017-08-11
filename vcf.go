@@ -224,34 +224,27 @@ func parseVcfLine(line string, header []string) ([]*Variant, error) {
 
 	result := make([]*Variant, 0, 64)
 	for i, alternative := range alternatives {
-
-		if baseVariant.Chrom != "" && baseVariant.Pos >= 0 && baseVariant.Ref != "" && alternative != "" {
-
-			var altinfo map[string]interface{}
-			if i >= len(info) {
-				altinfo = info[0]
-			} else {
-				altinfo = info[i]
-			}
-
-			variant := &Variant{
-				Chrom:   baseVariant.Chrom,
-				Pos:     baseVariant.Pos,
-				Ref:     baseVariant.Ref,
-				Alt:     alternative,
-				ID:      baseVariant.ID,
-				Samples: baseVariant.Samples,
-				Info:    altinfo,
-				Qual:    baseVariant.Qual,
-				Filter:  baseVariant.Filter,
-			}
-			buildInfoSubFields(variant)
-
-			result = append(result, variant)
-
+		var altinfo map[string]interface{}
+		if i >= len(info) {
+			altinfo = info[0]
 		} else {
-			return nil, errors.New("error parsing variant: '" + line + "'")
+			altinfo = info[i]
 		}
+
+		variant := &Variant{
+			Chrom:   baseVariant.Chrom,
+			Pos:     baseVariant.Pos,
+			Ref:     baseVariant.Ref,
+			Alt:     alternative,
+			ID:      baseVariant.ID,
+			Samples: baseVariant.Samples,
+			Info:    altinfo,
+			Qual:    baseVariant.Qual,
+			Filter:  baseVariant.Filter,
+		}
+		buildInfoSubFields(variant)
+
+		result = append(result, variant)
 	}
 	return result, nil
 }
@@ -301,7 +294,7 @@ func fixRefAltSuffix(variant *Variant) *Variant {
 	alt := variant.Alt
 	i := len(ref) - 1
 	j := len(alt) - 1
-	for ref[i] == alt[j] && i > 0 && j > 0 {
+	for i > 0 && j > 0 && ref[i] == alt[j] {
 		i--
 		j--
 	}
